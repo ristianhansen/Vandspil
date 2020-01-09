@@ -13,16 +13,18 @@ Created on Thu Dec 19 11:35:16 2019
 ##############################################################################
 """
 To do:
-    - thingspeak funktion skal have en time-funktion
-    - trigger funktion skal kigges på
-    - sms funktion skal have ny bruger
-    - skriv kommentarer
-    - hvor skal der hardcodes variabler?
+    - E-mail og SMS funktioner skal kun kunne køre 1 gang i døgnet
+    - Kommentarer
+    - Exception handling
+    - Github synkronisering
 """
 ##############################################################################
 
 import aws_functions as aws
-from time import time
+
+# Variabler til trigger-funktion
+counter = 0
+timeTrigger = 10**100
 
 # Variabler for kommunikation med ADC over SPI.
 vref = 5
@@ -52,19 +54,20 @@ rNum            = '+4593886999' # Nummeret skal være verified på Twilio.
 running = True
 MCP3008 = aws.initADC(1)
 
-while running:
-    
-    
-    roomTemp  = round(aws.readADC(MCP3008,roomTempChannel,vref),1)
-    pipeTemp  = round(aws.readADC(MCP3008,pipeTempChannel,vref),1)
-    print(f'Rum temp: {roomTemp} | Rør temp: {pipeTemp}')
+try:
+    while running:
         
-    aws.thingSpeakTransfer(channelID, writeKey, roomTemp, pipeTemp)
-
-    trigger = aws.checkTempState(roomTemp, pipeTemp)
+        roomTemp  = round(aws.readADC(MCP3008,roomTempChannel,vref),1)
+        pipeTemp  = round(aws.readADC(MCP3008,pipeTempChannel,vref),1)
+        print(f'Rum temp: {roomTemp} | Rør temp: {pipeTemp}')
+            
+        aws.thingSpeakTransfer(channelID, writeKey, roomTemp, pipeTemp)
     
-    if trigger:
-        msgTimer = time() + 60*1440
-    if time() >= msgTimer:
-        aws.AlarmEmail(smtpHost, smtpPort, sMail, sPass, rMail)
-        aws.SMSMsg(accountSID, authToken, smsMessage, sNum, rNum)
+        trigger,counter,timeTrigger  = aws.checkTempState(roomTemp, pipeTemp, counter, timeTrigger)
+        
+        if trigger:
+            aws.AlarmEmail(smtpHost, smtpPort, sMail, sPass, rMail)
+            aws.SMSMsg(accountSID, authToken, smsMessage, sNum, rNum)
+except KeyboardInterrupt:
+    running = False
+    print("Program afbrudt.")

@@ -10,11 +10,13 @@ Created on Thu Dec 19 11:35:16 2019
     Mikkel Vardinghus.
 """
 
-#import spidev
-from time import time, ctime, sleep
+import spidev
+from time import time
 import requests
 import smtplib
 from twilio.rest import Client #Twilio skal installeres (pip install twilio)
+import pytz
+from datetime import datetime
 
 
 ###############################################################################
@@ -57,21 +59,22 @@ def thingSpeakTransfer(channelID, writeKey, temp1, temp2):
     og 2 temperaturer. Dataen bliver herefter gemt i en dictionary, 
     og sendes herefter til Thingspeak som json-data.
     """
-    #time = find ud af hvordan den finder ud af det, tid?
+
     try:
         url = f"https://api.thingspeak.com/channels/{channelID}/bulk_update.json"
         
-        timestamp = datetime.now(tz = pytz.timezone('CET')).isoformat()
+        timeStamp = datetime.now(tz = pytz.timezone('CET')).isoformat()
         data = {
                 "write_api_key" : writeKey,
                 "updates"       : [{
-                        "created_at"    : timestamp,
+                        "created_at"    : timeStamp,
                         "field1"        : temp1,
                         "field2"        : temp2
                         }]}
         
-        response = requests.post(url,json=data)
-        status = response.status_code
+        requests.post(url,json=data)
+        #response = requests.post(url,json=data)
+        #status = response.status_code
         
     except:
         print("ThingSpeak transfer failed.")
@@ -80,30 +83,49 @@ def thingSpeakTransfer(channelID, writeKey, temp1, temp2):
 ###############################################################################
 # Trigger-funktion
 
-def checkTempState(roomTemp, pipeTemp):
+def checkTempState(roomTemp, pipeTemp, counter, timeTrigger):
     """
-    Denne funktion modtager som input rumtemperatur og rørtemperatur,
-    sammenligner de to, og returnerer en booleansk værdi afhængigt af
-    differencen. Hvis der er en difference på mere end 1 grad over en
-    periode på 1 døgn, returnerer funktionen True, hvis ikke, False.
+    Modtager som input rumtemperatur, rørtemperatur, counter og et tidsstempel.
+    
+    De to temperaturer sammenlignes, og såfremt der er forskel på mere end 1
+    grad, samtidig med at counteren er 0, skabes et nyt tidsstempel,
+    og der bliver lagt 1 til counteren.
+    
+    Normaliserer temperaturforskellen sig nulstiller tidsstempel og counter.
+    
+    Tidsstemplet bliver herefter sammenlignet med nuværende tid,
+    og såfremt differencen vedvarer i et døgn returnerer funktionen True på
+    trigger variablen.
     """
-    tempDiff = roomTemp-pipeTemp
     trigger = False
-    timeTrigger = 90000000*5
-    if tempDiff < -1 or tempDiff > 1:
-        timeTrigger = time.time() + 5
-#        timeTrigger = time.time() + 60*1440 Original
-    if time.time() >= timeTrigger:
+    tempDiff = roomTemp-pipeTemp
+    
+    if (tempDiff < -1 or tempDiff > 1):
+        tempTrigger = True
+    else:
+        tempTrigger = False
+        
+    if tempTrigger and counter == 0:
+        timeTrigger = time() + 60*1440
+        counter += 1
+    
+    if not tempTrigger:
+        counter = 0
+        timeTrigger = 10**100
+            
+    if time() >= timeTrigger:
+        print("Der er sendt besked")
         trigger = True
+        counter = 0
 
-    return trigger
+    return trigger, counter, timeTrigger
 
 ###############################################################################
 # E-mail alarm funktion
     
 def AlarmEmail(smtpHost, smtpPort, sMail, sPass, rMail):
     """
-    Hvad glor du på?
+    Funktion til at give besked om vandspild over email.
     """
     # Laver en SMTP session
     s = smtplib.SMTP(smtpHost, smtpPort)
@@ -118,7 +140,6 @@ def AlarmEmail(smtpHost, smtpPort, sMail, sPass, rMail):
     textmessage = "Du har vandspild."
     message = 'Subject: {}\n\n{}'.format('VANDSPILD!', textmessage)
     
-     
     # send emailen
     s.sendmail(sMail, rMail, message)
      
@@ -131,7 +152,7 @@ def AlarmEmail(smtpHost, smtpPort, sMail, sPass, rMail):
 
 def SMSMsg(accountSID,authToken,messageBody,sNum,rNum):
     """
-    Kommentar tekst
+    Funktion til at give besked om vandspild over sms.
     """
     client = Client(accountSID, authToken)
     
@@ -142,12 +163,6 @@ def SMSMsg(accountSID,authToken,messageBody,sNum,rNum):
                          from_=sNum,
                          to=rNum
                      )
-    return
-
-###############################################################################
-# Test funktion
+    print(message)
     
-def timeTest():
-    f = datetime.now()
-    print(f)
     return
