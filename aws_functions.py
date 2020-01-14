@@ -17,7 +17,7 @@ import smtplib
 from twilio.rest import Client #Twilio skal installeres (pip install twilio)
 import pytz
 from datetime import datetime
-
+from subprocess import Popen, PIPE
 
 ###############################################################################
 # Funktion til initialisering af ADC'en.
@@ -165,4 +165,14 @@ def SMSMsg(accountSID,authToken,messageBody,sNum,rNum):
                      )
     print(message)
     
+    return
+
+###############################################################################
+# Funktion til at genstarte Raspberry Pi'en. Brugt i tilfælde af fejl.
+
+def restart():
+    command = "/usr/bin/sudo /sbin/shutdown -r now"
+    process = Popen(command.split(), stdout=PIPE)
+    output = process.communicate()[0]
+    print(output)
     return
