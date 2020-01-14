@@ -11,7 +11,7 @@ Created on Thu Dec 19 11:35:16 2019
 """
 
 import spidev
-from time import time
+from time import time, sleep
 import requests
 import smtplib
 from twilio.rest import Client #Twilio skal installeres (pip install twilio)
@@ -42,7 +42,6 @@ def readADC(ADC, channel, vref):
     Andet indeks specificerer hvilken kanal.
     Tredje indeks er ligegyldig data, som dog stadig skal sendes.
     """
-    
     reply       =    ADC.xfer2([0b00000001,channel, 0b00000000])
     roomValue   =    ((reply[1]&3) << 8) + reply[2]
     roomVolts   =    (roomValue*vref)/1024
@@ -78,6 +77,8 @@ def thingSpeakTransfer(channelID, writeKey, temp1, temp2):
         
     except:
         print("ThingSpeak transfer failed.")
+        pass
+        
     return
 
 ###############################################################################
@@ -127,24 +128,27 @@ def AlarmEmail(smtpHost, smtpPort, sMail, sPass, rMail):
     """
     Funktion til at give besked om vandspild over email.
     """
-    # Laver en SMTP session
-    s = smtplib.SMTP(smtpHost, smtpPort)
-     
-    # Starter tls for sikkerhed.
-    s.starttls()
-     
-    #  afsenders credidentials
-    s.login(sMail, sPass)
-     
-    # Variabel med besked.
-    textmessage = "Du har vandspild."
-    message = 'Subject: {}\n\n{}'.format('VANDSPILD!', textmessage)
-    
-    # send emailen
-    s.sendmail(sMail, rMail, message)
-     
-    # lukker smtp sessionen igen.
-    s.quit()
+    try:
+        # Laver en SMTP session
+        s = smtplib.SMTP(smtpHost, smtpPort)
+         
+        # Starter tls for sikkerhed.
+        s.starttls()
+         
+        #  afsenders credidentials
+        s.login(sMail, sPass)
+         
+        # Variabel med besked.
+        textmessage = "Du har vandspild."
+        message = 'Subject: {}\n\n{}'.format('VANDSPILD!', textmessage)
+        
+        # send emailen
+        s.sendmail(sMail, rMail, message)
+         
+        # lukker smtp sessionen igen.
+        s.quit()
+    except:
+        pass
     return
 
 ###############################################################################
@@ -154,23 +158,30 @@ def SMSMsg(accountSID,authToken,messageBody,sNum,rNum):
     """
     Funktion til at give besked om vandspild over sms.
     """
-    client = Client(accountSID, authToken)
-    
-    #Danner beskeden
-    message = client.messages \
-                    .create(
-                         body=messageBody,
-                         from_=sNum,
-                         to=rNum
-                     )
-    print(message)
-    
+    try:
+        client = Client(accountSID, authToken)
+        
+        #Danner beskeden
+        message = client.messages \
+                        .create(
+                             body=messageBody,
+                             from_=sNum,
+                             to=rNum
+                         )
+        print(message)
+    except:
+        pass
     return
 
 ###############################################################################
 # Funktion til at genstarte Raspberry Pi'en. Brugt i tilfælde af fejl.
 
 def restart():
+    """
+    Funktion til at genstarte Raspberry Pi'en. Bliver anvendt i tilfælde af
+    at programmet crasher.
+    """
+    sleep(60)
     command = "/usr/bin/sudo /sbin/shutdown -r now"
     process = Popen(command.split(), stdout=PIPE)
     output = process.communicate()[0]
