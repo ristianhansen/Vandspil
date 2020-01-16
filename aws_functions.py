@@ -10,14 +10,12 @@ Created on Thu Dec 19 11:35:16 2019
     Mikkel Vardinghus.
 """
 
-import spidev
-from time import time, sleep
+#import spidev
+from time import time, ctime, sleep
 import requests
 import smtplib
 from twilio.rest import Client #Twilio skal installeres (pip install twilio)
-import pytz
-from datetime import datetime
-from subprocess import Popen, PIPE
+
 
 ###############################################################################
 # Funktion til initialisering af ADC'en.
@@ -42,6 +40,7 @@ def readADC(ADC, channel, vref):
     Andet indeks specificerer hvilken kanal.
     Tredje indeks er ligegyldig data, som dog stadig skal sendes.
     """
+    
     reply       =    ADC.xfer2([0b00000001,channel, 0b00000000])
     roomValue   =    ((reply[1]&3) << 8) + reply[2]
     roomVolts   =    (roomValue*vref)/1024
@@ -58,97 +57,73 @@ def thingSpeakTransfer(channelID, writeKey, temp1, temp2):
     og 2 temperaturer. Dataen bliver herefter gemt i en dictionary, 
     og sendes herefter til Thingspeak som json-data.
     """
-
+    #time = find ud af hvordan den finder ud af det, tid?
     try:
         url = f"https://api.thingspeak.com/channels/{channelID}/bulk_update.json"
         
-        timeStamp = datetime.now(tz = pytz.timezone('CET')).isoformat()
+        timestamp = datetime.now(tz = pytz.timezone('CET')).isoformat()
         data = {
                 "write_api_key" : writeKey,
                 "updates"       : [{
-                        "created_at"    : timeStamp,
+                        "created_at"    : timestamp,
                         "field1"        : temp1,
                         "field2"        : temp2
                         }]}
         
-        requests.post(url,json=data)
-        #response = requests.post(url,json=data)
-        #status = response.status_code
+        response = requests.post(url,json=data)
+        status = response.status_code
         
     except:
         print("ThingSpeak transfer failed.")
-        pass
-        
     return
 
 ###############################################################################
 # Trigger-funktion
 
-def checkTempState(roomTemp, pipeTemp, counter, timeTrigger):
+def checkTempState(roomTemp, pipeTemp):
     """
-    Modtager som input rumtemperatur, rørtemperatur, counter og et tidsstempel.
-    
-    De to temperaturer sammenlignes, og såfremt der er forskel på mere end 1
-    grad, samtidig med at counteren er 0, skabes et nyt tidsstempel,
-    og der bliver lagt 1 til counteren.
-    
-    Normaliserer temperaturforskellen sig nulstiller tidsstempel og counter.
-    
-    Tidsstemplet bliver herefter sammenlignet med nuværende tid,
-    og såfremt differencen vedvarer i et døgn returnerer funktionen True på
-    trigger variablen.
+    Denne funktion modtager som input rumtemperatur og rørtemperatur,
+    sammenligner de to, og returnerer en booleansk værdi afhængigt af
+    differencen. Hvis der er en difference på mere end 1 grad over en
+    periode på 1 døgn, returnerer funktionen True, hvis ikke, False.
     """
-    trigger = False
     tempDiff = roomTemp-pipeTemp
-    
-    if (tempDiff < -1 or tempDiff > 1):
-        tempTrigger = True
-    else:
-        tempTrigger = False
-        
-    if tempTrigger and counter == 0:
-        timeTrigger = time() + 60*1440
-        counter += 1
-    
-    if not tempTrigger:
-        counter = 0
-        timeTrigger = 10**100
-            
-    if time() >= timeTrigger:
-        print("Der er sendt besked")
+    trigger = False
+    timeTrigger = 90000000*5
+    if tempDiff < -1 or tempDiff > 1:
+        timeTrigger = time.time() + 5
+#        timeTrigger = time.time() + 60*1440 Original
+    if time.time() >= timeTrigger:
         trigger = True
-        counter = 0
 
-    return trigger, counter, timeTrigger
+    return trigger
 
 ###############################################################################
 # E-mail alarm funktion
     
 def AlarmEmail(smtpHost, smtpPort, sMail, sPass, rMail):
     """
-    Funktion til at give besked om vandspild over email.
+    Hvad glor du på?
     """
-    try:
-        # Laver en SMTP session
-        s = smtplib.SMTP(smtpHost, smtpPort)
-         
-        # Starter tls for sikkerhed.
-        s.starttls()
-         
-        #  afsenders credidentials
-        s.login(sMail, sPass)
-         
-        # Variabel med besked.
-        textmessage = "Du har vandspild."
-        message = 'Subject: {}\n\n{}'.format('VANDSPILD!', textmessage)
-        
-        # send emailen
-        s.sendmail(sMail, rMail, message)
-         
-        # lukker smtp sessionen igen.
-        s.quit()
-    except:
-        pass
+    # Laver en SMTP session
+    s = smtplib.SMTP(smtpHost, smtpPort)
+     
+    # Starter tls for sikkerhed.
+    s.starttls()
+     
+    #  afsenders credidentials
+    s.login(sMail, sPass)
+     
+    # Variabel med besked.
+    textmessage = "Du har vandspild."
+    message = 'Subject: {}\n\n{}'.format('VANDSPILD!', textmessage)
+    
+     
+    # send emailen
+    s.sendmail(sMail, rMail, message)
+     
+    # lukker smtp sessionen igen.
+    s.quit()
     return
 
 ###############################################################################
@@ -156,34 +131,23 @@ def AlarmEmail(smtpHost, smtpPort, sMail, sPass, rMail):
 
 def SMSMsg(accountSID,authToken,messageBody,sNum,rNum):
     """
-    Funktion til at give besked om vandspild over sms.
+    Kommentar tekst
     """
-    try:
-        client = Client(accountSID, authToken)
-        
-        #Danner beskeden
-        message = client.messages \
-                        .create(
-                             body=messageBody,
-                             from_=sNum,
-                             to=rNum
-                         )
-        print(message)
-    except:
-        pass
+    client = Client(accountSID, authToken)
+    
+    #Danner beskeden
+    message = client.messages \
+                    .create(
+                         body=messageBody,
+                         from_=sNum,
+                         to=rNum
+                     )
     return
 
 ###############################################################################
-# Funktion til at genstarte Raspberry Pi'en. Brugt i tilfælde af fejl.
-
-def restart():
-    """
-    Funktion til at genstarte Raspberry Pi'en. Bliver anvendt i tilfælde af
-    at programmet crasher.
-    """
-    sleep(60)
-    command = "/usr/bin/sudo /sbin/shutdown -r now"
-    process = Popen(command.split(), stdout=PIPE)
-    output = process.communicate()[0]
-    print(output)
+# Test funktion
+    
+def timeTest():
+    f = datetime.now()
+    print(f)
     return
