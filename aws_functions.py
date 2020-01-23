@@ -131,6 +131,7 @@ def emailAlert(smtpHost, smtpPort, sMail, sPass, rMail):
     """
     Funktion til at give besked om vandspild over email.
     """
+    timeStamp = ctime()
     try:
         # Laver en SMTP session
         s = smtplib.SMTP(smtpHost, smtpPort)
@@ -142,12 +143,12 @@ def emailAlert(smtpHost, smtpPort, sMail, sPass, rMail):
         s.login(sMail, sPass)
          
         # Variabel med besked.
-        textmessage = "Du har vandspild."
+        textmessage = f"Du har vandspild. Sendt {timeStamp}"
         message = 'Subject: {}\n\n{}'.format('VANDSPILD!', textmessage)
         
         # send emailen
         s.sendmail(sMail, rMail, message)
-         
+        
         # lukker smtp sessionen igen.
         s.quit()
     except Exception as errorMsg:
@@ -161,6 +162,8 @@ def emailAlert(smtpHost, smtpPort, sMail, sPass, rMail):
 def smsAlert(accountSID,authToken,messageBody,sNum,rNum):
     """
     Funktion til at give besked om vandspild over sms.
+    
+    Hej Ib og/eller Henning. Læser i det her?
     """
     try:
         client = Client(accountSID, authToken)

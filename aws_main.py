@@ -32,11 +32,11 @@ sPass           = 'vand12345'
 rMail           = '1080486@ucn.dk' # Mikkels studiemail
 
 # Variabler for afsending af sms alarm
-accountSID      = 'ACb46169ce269feae4771b07bbcc18746a'
-authToken       = 'baba7a7f332fb1fbc2431744804e2f76'
+accountSID      = 'AC00f16cee6bdebbac72f4da3d7b8a819f'
+authToken       = '4766fbfeb6871003e79d0752db2cdaaa'
 smsMessage      = 'Der er registreret vandspild på din enhed.'
-sNum            = '+19726395292'
-rNum            = '+4593886999' # Nummeret skal være verified på Twilio.
+sNum            = '+12564459376'
+rNum            = '+4522355213' # Nummeret skal være verified på Twilio.
 
 # Variabler til fejl-logning
 filePath        = '/home/pi/Documents/project1/Vandspil/errorlog.txt'
