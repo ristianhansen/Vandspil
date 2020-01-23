@@ -34,7 +34,7 @@ def initADC(SSn=0):
     spi.max_speed_hz = 50000
 
     return spi
-
+    
 ###############################################################################
 # Læs data fra ADC funktion
 
@@ -135,7 +135,7 @@ def emailAlert(smtpHost, smtpPort, sMail, sPass, rMail):
         # Laver en SMTP session
         s = smtplib.SMTP(smtpHost, smtpPort)
          
-        # Starter tls for sikkerhed.
+        # Starter tls (transport layer security) for sikkerhed.
         s.starttls()
          
         #  afsenders credidentials
@@ -198,7 +198,7 @@ def restart():
 
 def errorLog(filePath, errorMsg):
     """
-    Kommentar
+    
     """
     try:
         timeStamp = ctime()

@@ -9,15 +9,6 @@ Created on Thu Dec 19 11:35:16 2019
     Jan Nielsen,
     Mikkel Vardinghus.
 """
-
-##############################################################################
-"""
-To do:
-    - Ændrer crontab fra aws_source.py til aws_main.py
-    - Exceptions
-"""
-##############################################################################
-
 import aws_functions as aws
 
 # Variabler til trigger-funktion
@@ -38,7 +29,7 @@ smtpHost        = 'smtp.gmail.com'
 smtpPort        = 587
 sMail           = 'avoidwaterpillage@gmail.com'
 sPass           = 'vand12345'
-rMail           = '1080486@ucn.dk'
+rMail           = '1080486@ucn.dk' # Mikkels studiemail
 
 # Variabler for afsending af sms alarm
 accountSID      = 'ACb46169ce269feae4771b07bbcc18746a'
@@ -50,14 +41,11 @@ rNum            = '+4593886999' # Nummeret skal være verified på Twilio.
 # Variabler til fejl-logning
 filePath        = '/home/pi/Documents/project1/Vandspil/errorlog.txt'
 
-
-# PROGRAM KODE STARTER HER
 try:
     
-    running = True
     MCP3008 = aws.initADC(1)
 
-    while running:
+    while True:
         
         roomTemp  = round(aws.readADC(MCP3008,roomTempChannel,vref),1)
         pipeTemp  = round(aws.readADC(MCP3008,pipeTempChannel,vref),1)
@@ -70,6 +58,11 @@ try:
         if trigger:
             aws.emailAlert(smtpHost, smtpPort, sMail, sPass, rMail)
             aws.smsAlert(accountSID, authToken, smsMessage, sNum, rNum)
+except KeyboardInterrupt:
+    counter = 0
+    timeTrigger = 10*100
 except Exception as errorMsg:
     aws.errorLog(filePath, errorMsg)
     aws.restart()
+    counter = 0
+    timeTrigger = 10*100
